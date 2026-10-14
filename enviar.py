@@ -9,28 +9,64 @@ sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"
 BASE = os.environ["FRONTEND_URL"].rstrip("/")
 VERDE = "#0a7a4f"
 
+IMG_HEADER = f"{BASE}/img/header.jpeg"
+IMG_FOOTER = f"{BASE}/img/footer.jpeg"
 
-def boton(token):
-    url = f"{BASE}/?t={token}"
-    return (
-        f'<p style="text-align:center;margin:28px 0">'
-        f'<a href="{url}" style="display:inline-block;background:{VERDE};color:#fff;'
-        f'padding:14px 36px;border-radius:28px;font-weight:bold;font-size:16px;'
-        f'text-decoration:none;font-family:Arial,sans-serif">Responder encuesta</a></p>'
-    )
+
+def botones(token, q, valores):
+    links = ""
+    for v in valores:
+        url = f"{BASE}/?t={token}&q={q}&v={v}"
+        links += (
+            f'<a href="{url}" style="display:inline-block;margin:3px;min-width:38px;'
+            f'padding:9px 0;text-align:center;border:2px solid {VERDE};border-radius:20px;'
+            f'color:{VERDE};background:#ffffff;font-weight:bold;text-decoration:none;'
+            f'font-family:Arial,sans-serif">{v}</a>'
+        )
+    return f'<div style="margin-top:14px">{links}</div>'
+
+
+def tarjeta(n, texto, escala, token, valores, margen=""):
+    return f"""
+  <div style="background:#eef7f2;padding:20px;border-radius:12px;{margen}">
+    <table role="presentation" width="100%"><tr>
+      <td width="44" valign="top">
+        <span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;
+        background:{VERDE};color:#fff;font-weight:bold;text-align:center;font-family:Arial,sans-serif">{n}</span>
+      </td>
+      <td valign="top" style="font-family:Arial,sans-serif;font-size:16px;font-weight:bold;color:#0a4a33">{texto}</td>
+    </tr></table>
+    <p style="color:#666;font-size:13px;margin:10px 0 0;font-family:Arial,sans-serif">{escala}</p>
+    {botones(token, n, valores)}
+  </div>"""
 
 
 def html_correo(token):
+    p1 = tarjeta(
+        1,
+        "En una escala del 1 al 5, ¿qué tan satisfecho/a estás con el servicio de garantía y reparación de pantalla de Happy?",
+        "1 = Muy insatisfecho/a | 5 = Muy satisfecho/a",
+        token, range(1, 6), "margin-bottom:16px;",
+    )
+    p2 = tarjeta(
+        2,
+        "Del 0 al 10, ¿qué tan probable es que recomiendes comprar un celular con Happy a un familiar o amigo?",
+        "0 = Nada probable | 10 = Totalmente probable",
+        token, range(0, 11),
+    )
     return f"""
 <div style="max-width:600px;margin:auto;font-family:Arial,sans-serif;color:#1a1a1a">
-  <div style="background:{VERDE};color:#fff;padding:28px;border-radius:12px">
-    <h1 style="margin:0 0 8px">Tu opinión <i style="color:#8be28b">nos importa</i></h1>
-    <p style="margin:0">En Happy queremos conocer tu experiencia y seguir mejorando nuestro servicio.</p>
+  <img src="{IMG_HEADER}" alt="Happy - Tu opinión nos ayuda a mejorar" width="600"
+       style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:12px 12px 0 0">
+  <div style="padding:20px 8px">
+    <p style="margin:0 0 12px">Estimado/a cliente,</p>
+    <p style="margin:0 0 20px">Nos ayudaría mucho si puedes responder estas 2 preguntas.</p>
+    {p1}
+    {p2}
+    <p style="text-align:center;color:{VERDE};margin:28px 0 20px"><b>¡Gracias por ayudarnos a mejorar!</b></p>
   </div>
-  <p>Estimado/a cliente,</p>
-  <p>Nos ayudaría mucho si puedes responder 2 preguntas rápidas sobre tu experiencia con nuestro servicio de garantía y reparación de pantalla. Te tomará menos de un minuto.</p>
-  {boton(token)}
-  <p style="text-align:center;color:{VERDE};margin-top:24px"><b>¡Gracias por ayudarnos a mejorar!</b><br>Happy</p>
+  <img src="{IMG_FOOTER}" alt="Gracias por compartir tu opinión - Happy" width="600"
+       style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:0 0 12px 12px">
 </div>"""
 
 def enviar(email, token):

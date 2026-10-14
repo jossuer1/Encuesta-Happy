@@ -85,7 +85,10 @@
 
     <script>
       const API_URL = "https://encuesta-happy.onrender.com";
-      const token = new URLSearchParams(location.search).get("t");
+      const params = new URLSearchParams(location.search);
+      const token = params.get("t");
+      const qIni = parseInt(params.get("q"));
+      const vIni = parseInt(params.get("v"));
       const card = document.getElementById("card");
 
       const PREGUNTAS = {
@@ -136,7 +139,18 @@
           const [r1, r2] = await Promise.all([estado(1), estado(2)]);
           if (r1 === null || r2 === null) return invalido();
           if (r1 && r2) return yaRespondida();
-          mostrar(r1 ? 2 : 1); // si ya contestó la 1, retoma en la 2
+
+          let q = r1 ? 2 : 1; // por defecto, la primera pendiente
+          let v = null;
+          const P = PREGUNTAS[qIni];
+          const enlaceValido = P && vIni >= P.min && vIni <= P.max;
+          const yaContestadaEsa = qIni === 1 ? r1 : r2;
+          if (enlaceValido && !yaContestadaEsa) {
+            q = qIni;
+            v = vIni;
+          } // viene de un número del correo
+
+          mostrar(q, v, r1 || r2); // "ultima" si ya hay una respondida
         } catch (e) {
           html(
             "Ups",
@@ -145,20 +159,22 @@
         }
       }
 
-      function mostrar(q) {
+      function mostrar(q, valorInicial, ultima) {
         const P = PREGUNTAS[q];
-        let valor = null;
+        let valor = valorInicial;
         let botones = "";
-        for (let i = P.min; i <= P.max; i++)
-          botones += `<button class="num" data-v="${i}">${i}</button>`;
+        for (let i = P.min; i <= P.max; i++) {
+          botones += `<button class="num${i === valorInicial ? " sel" : ""}" data-v="${i}">${i}</button>`;
+        }
+        const textoBoton = ultima ? "Enviar" : "Siguiente";
 
         html(
           "Tu opinión",
-          `<p class="paso">Pregunta ${q} de 2</p>
+          `<p class="paso">${ultima ? "Última pregunta" : `Pregunta ${q} de 2`}</p>
      <p class="preg">${P.texto}</p>
      <p class="escala">${P.escala}</p>
      <div class="nums">${botones}</div>
-     <button class="main" id="sig" disabled>${q === 1 ? "Siguiente" : "Enviar"}</button>`,
+     <button class="main" id="sig" ${valor === null ? "disabled" : ""}>${textoBoton}</button>`,
         );
 
         const sig = document.getElementById("sig");
@@ -184,10 +200,10 @@
             });
             if (!r.ok) throw new Error();
             // guardado o ya respondida: en ambos casos se avanza
-            q === 1 ? mostrar(2) : gracias();
+            ultima ? gracias() : mostrar(q === 1 ? 2 : 1, null, true);
           } catch (e) {
             sig.disabled = false;
-            sig.textContent = q === 1 ? "Siguiente" : "Enviar";
+            sig.textContent = textoBoton;
             alert("No se pudo enviar. Intenta de nuevo.");
           }
         };
