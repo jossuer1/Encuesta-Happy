@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>HappyPay - Tu opinión</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #eef7f2;
+        display: flex;
+        justify-content: center;
+        padding: 40px 16px;
+        margin: 0;
+      }
+      .card {
+        background: #fff;
+        max-width: 460px;
+        width: 100%;
+        padding: 32px;
+        border-radius: 14px;
+        text-align: center;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      }
+      h2 {
+        color: #0a7a4f;
+        margin-top: 0;
+      }
+      .num {
+        font-size: 56px;
+        font-weight: bold;
+        color: #0a7a4f;
+        margin: 8px 0 20px;
+      }
+      button {
+        background: #0a7a4f;
+        color: #fff;
+        border: 0;
+        padding: 12px 28px;
+        border-radius: 24px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      small {
+        color: #777;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="card">
+      <h2>Cargando...</h2>
+      <p>Un momento por favor, esto puede tardar unos segundos.</p>
+    </div>
+
+    <script>
+      const API_URL = "https://TU-BACKEND.onrender.com"; // se cambia en el paso 5
+
+      const p = new URLSearchParams(location.search);
+      const token = p.get("t");
+      const q = parseInt(p.get("q"));
+      const v = parseInt(p.get("v"));
+      const RANGOS = { 1: [1, 5], 2: [0, 10] };
+      const card = document.getElementById("card");
+
+      function pantalla(titulo, html) {
+        card.innerHTML = `<h2>${titulo}</h2>${html}`;
+      }
+      const invalido = () =>
+        pantalla("Enlace inválido", "<p>Este enlace no es válido.</p>");
+      const yaRespondida = () =>
+        pantalla(
+          "Ya registramos tu respuesta",
+          "<p>Gracias, esta pregunta ya fue respondida.</p>",
+        );
+
+      async function init() {
+        if (
+          !token ||
+          !RANGOS[q] ||
+          isNaN(v) ||
+          v < RANGOS[q][0] ||
+          v > RANGOS[q][1]
+        )
+          return invalido();
+        try {
+          const r = await fetch(
+            `${API_URL}/api/estado/${encodeURIComponent(token)}/${q}`,
+          );
+          if (r.status === 404 || r.status === 400) return invalido();
+          if (!r.ok) throw new Error();
+          const d = await r.json();
+          if (d.respondida) return yaRespondida();
+          pantalla(
+            "Confirma tu respuesta",
+            `<p>Tu calificación:</p><div class="num">${v}</div>
+       <button id="btn">Confirmar mi respuesta</button>`,
+          );
+          document.getElementById("btn").onclick = enviar;
+        } catch (e) {
+          pantalla(
+            "Ups",
+            "<p>No pudimos conectar. Recarga la página en unos segundos.</p>",
+          );
+        }
+      }
+
+      async function enviar() {
+        const btn = document.getElementById("btn");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+        try {
+          const r = await fetch(`${API_URL}/api/respuesta`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, q, v }),
+          });
+          if (!r.ok) throw new Error();
+          const d = await r.json();
+          if (d.guardado) {
+            pantalla(
+              "¡Gracias por tu opinión!",
+              "<p>Tu respuesta fue registrada.</p><small>Si falta otra pregunta, puedes responderla desde el correo.</small>",
+            );
+          } else {
+            yaRespondida();
+          }
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = "Confirmar mi respuesta";
+          alert("No se pudo enviar. Intenta de nuevo.");
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
