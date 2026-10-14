@@ -10,17 +10,14 @@ BASE = os.environ["FRONTEND_URL"].rstrip("/")
 VERDE = "#0a7a4f"
 
 
-def botones(token, q, valores):
-    celdas = ""
-    for v in valores:
-        url = f"{BASE}/?t={token}&q={q}&v={v}"
-        celdas += (
-            f'<td style="padding:3px"><a href="{url}" style="display:inline-block;'
-            f'min-width:34px;padding:9px 0;text-align:center;border:2px solid {VERDE};'
-            f'border-radius:20px;color:{VERDE};font-weight:bold;text-decoration:none;'
-            f'font-family:Arial,sans-serif">{v}</a></td>'
-        )
-    return f'<table role="presentation"><tr>{celdas}</tr></table>'
+def boton(token):
+    url = f"{BASE}/?t={token}"
+    return (
+        f'<p style="text-align:center;margin:28px 0">'
+        f'<a href="{url}" style="display:inline-block;background:{VERDE};color:#fff;'
+        f'padding:14px 36px;border-radius:28px;font-weight:bold;font-size:16px;'
+        f'text-decoration:none;font-family:Arial,sans-serif">Responder encuesta</a></p>'
+    )
 
 
 def html_correo(token):
@@ -31,23 +28,10 @@ def html_correo(token):
     <p style="margin:0">En Happy queremos conocer tu experiencia y seguir mejorando nuestro servicio.</p>
   </div>
   <p>Estimado/a cliente,</p>
-  <p>Nos ayudaría mucho si puedes responder estas 2 preguntas.</p>
-
-  <div style="background:#eef7f2;padding:18px;border-radius:12px;margin-bottom:14px">
-    <p><b>1.</b> En una escala del 1 al 5, ¿qué tan satisfecho/a estás con el servicio de garantía y reparación de pantalla de Happy?</p>
-    <p style="color:#666;font-size:13px">1 = Muy insatisfecho/a | 5 = Muy satisfecho/a</p>
-    {botones(token, 1, range(1, 6))}
-  </div>
-
-  <div style="background:#eef7f2;padding:18px;border-radius:12px">
-    <p><b>2.</b> Del 0 al 10, ¿qué tan probable es que recomiendes comprar un celular con Happy a un familiar o amigo?</p>
-    <p style="color:#666;font-size:13px">0 = Nada probable | 10 = Totalmente probable</p>
-    {botones(token, 2, range(0, 11))}
-  </div>
-
+  <p>Nos ayudaría mucho si puedes responder 2 preguntas rápidas sobre tu experiencia con nuestro servicio de garantía y reparación de pantalla. Te tomará menos de un minuto.</p>
+  {boton(token)}
   <p style="text-align:center;color:{VERDE};margin-top:24px"><b>¡Gracias por ayudarnos a mejorar!</b><br>Happy</p>
 </div>"""
-
 
 def enviar(email, token):
     r = requests.post(
