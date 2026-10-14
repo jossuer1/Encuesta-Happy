@@ -15,7 +15,7 @@
       }
       .card {
         background: #fff;
-        max-width: 460px;
+        max-width: 480px;
         width: 100%;
         padding: 32px;
         border-radius: 14px;
@@ -26,27 +26,54 @@
         color: #0a7a4f;
         margin-top: 0;
       }
-      .num {
-        font-size: 56px;
-        font-weight: bold;
-        color: #0a7a4f;
-        margin: 8px 0 20px;
+      .paso {
+        color: #777;
+        font-size: 13px;
+        margin: 0;
       }
-      button {
+      .preg {
+        font-size: 18px;
+        margin: 12px 0 4px;
+      }
+      .escala {
+        color: #777;
+        font-size: 13px;
+        margin: 0 0 18px;
+      }
+      .nums {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+      .num {
+        min-width: 44px;
+        padding: 10px 0;
+        border: 2px solid #0a7a4f;
+        border-radius: 22px;
+        background: #fff;
+        color: #0a7a4f;
+        font-weight: bold;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .num.sel {
+        background: #0a7a4f;
+        color: #fff;
+      }
+      .main {
         background: #0a7a4f;
         color: #fff;
         border: 0;
-        padding: 12px 28px;
+        padding: 12px 32px;
         border-radius: 24px;
         font-size: 16px;
         cursor: pointer;
       }
-      button:disabled {
-        opacity: 0.6;
+      .main:disabled {
+        opacity: 0.4;
         cursor: default;
-      }
-      small {
-        color: #777;
       }
     </style>
   </head>
@@ -57,82 +84,113 @@
     </div>
 
     <script>
-      const API_URL = "https://encuesta-happy.onrender.com"; // se cambia en el paso 5
-
-      const p = new URLSearchParams(location.search);
-      const token = p.get("t");
-      const q = parseInt(p.get("q"));
-      const v = parseInt(p.get("v"));
-      const RANGOS = { 1: [1, 5], 2: [0, 10] };
+      const API_URL = "https://encuesta-happy.onrender.com";
+      const token = new URLSearchParams(location.search).get("t");
       const card = document.getElementById("card");
 
-      function pantalla(titulo, html) {
-        card.innerHTML = `<h2>${titulo}</h2>${html}`;
-      }
+      const PREGUNTAS = {
+        1: {
+          texto:
+            "En una escala del 1 al 5, ¿qué tan satisfecho/a estás con el servicio de garantía y reparación de pantalla de Happy?",
+          escala: "1 = Muy insatisfecho/a | 5 = Muy satisfecho/a",
+          min: 1,
+          max: 5,
+        },
+        2: {
+          texto:
+            "Del 0 al 10, ¿qué tan probable es que recomiendes comprar un celular con Happy a un familiar o amigo?",
+          escala: "0 = Nada probable | 10 = Totalmente probable",
+          min: 0,
+          max: 10,
+        },
+      };
+
+      const html = (titulo, cuerpo) => {
+        card.innerHTML = `<h2>${titulo}</h2>${cuerpo}`;
+      };
       const invalido = () =>
-        pantalla("Enlace inválido", "<p>Este enlace no es válido.</p>");
+        html("Enlace inválido", "<p>Este enlace no es válido.</p>");
       const yaRespondida = () =>
-        pantalla(
+        html(
           "Ya registramos tu respuesta",
-          "<p>Gracias, esta pregunta ya fue respondida.</p>",
+          "<p>Gracias, ya respondiste esta encuesta.</p>",
+        );
+      const gracias = () =>
+        html(
+          "¡Gracias por tu opinión!",
+          "<p>Tus respuestas fueron registradas.</p>",
         );
 
+      async function estado(q) {
+        const r = await fetch(
+          `${API_URL}/api/estado/${encodeURIComponent(token)}/${q}`,
+        );
+        if (r.status === 404 || r.status === 400) return null;
+        if (!r.ok) throw new Error();
+        return (await r.json()).respondida;
+      }
+
       async function init() {
-        if (
-          !token ||
-          !RANGOS[q] ||
-          isNaN(v) ||
-          v < RANGOS[q][0] ||
-          v > RANGOS[q][1]
-        )
-          return invalido();
+        if (!token) return invalido();
         try {
-          const r = await fetch(
-            `${API_URL}/api/estado/${encodeURIComponent(token)}/${q}`,
-          );
-          if (r.status === 404 || r.status === 400) return invalido();
-          if (!r.ok) throw new Error();
-          const d = await r.json();
-          if (d.respondida) return yaRespondida();
-          pantalla(
-            "Confirma tu respuesta",
-            `<p>Tu calificación:</p><div class="num">${v}</div>
-       <button id="btn">Confirmar mi respuesta</button>`,
-          );
-          document.getElementById("btn").onclick = enviar;
+          const [r1, r2] = await Promise.all([estado(1), estado(2)]);
+          if (r1 === null || r2 === null) return invalido();
+          if (r1 && r2) return yaRespondida();
+          mostrar(r1 ? 2 : 1); // si ya contestó la 1, retoma en la 2
         } catch (e) {
-          pantalla(
+          html(
             "Ups",
             "<p>No pudimos conectar. Recarga la página en unos segundos.</p>",
           );
         }
       }
 
-      async function enviar() {
-        const btn = document.getElementById("btn");
-        btn.disabled = true;
-        btn.textContent = "Enviando...";
-        try {
-          const r = await fetch(`${API_URL}/api/respuesta`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, q, v }),
-          });
-          if (!r.ok) throw new Error();
-          const d = await r.json();
-          if (d.guardado) {
-            pantalla(
-              "¡Gracias por tu opinión!",
-              "<p>Tu respuesta fue registrada.</p><small>Si falta otra pregunta, puedes responderla desde el correo.</small>",
-            );
-          } else {
-            yaRespondida();
+      function mostrar(q) {
+        const P = PREGUNTAS[q];
+        let valor = null;
+        let botones = "";
+        for (let i = P.min; i <= P.max; i++)
+          botones += `<button class="num" data-v="${i}">${i}</button>`;
+
+        html(
+          "Tu opinión",
+          `<p class="paso">Pregunta ${q} de 2</p>
+     <p class="preg">${P.texto}</p>
+     <p class="escala">${P.escala}</p>
+     <div class="nums">${botones}</div>
+     <button class="main" id="sig" disabled>${q === 1 ? "Siguiente" : "Enviar"}</button>`,
+        );
+
+        const sig = document.getElementById("sig");
+        const nums = card.querySelectorAll(".num");
+
+        nums.forEach((b) => {
+          b.onclick = () => {
+            valor = parseInt(b.dataset.v);
+            nums.forEach((x) => x.classList.remove("sel"));
+            b.classList.add("sel");
+            sig.disabled = false;
+          };
+        });
+
+        sig.onclick = async () => {
+          sig.disabled = true;
+          sig.textContent = "Enviando...";
+          try {
+            const r = await fetch(`${API_URL}/api/respuesta`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token, q, v: valor }),
+            });
+            if (!r.ok) throw new Error();
+            // guardado o ya respondida: en ambos casos se avanza
+            q === 1 ? mostrar(2) : gracias();
+          } catch (e) {
+            sig.disabled = false;
+            sig.textContent = q === 1 ? "Siguiente" : "Enviar";
+            alert("No se pudo enviar. Intenta de nuevo.");
           }
-        } catch (e) {
-          btn.disabled = false;
-          btn.textContent = "Confirmar mi respuesta";
-          alert("No se pudo enviar. Intenta de nuevo.");
-        }
+        };
       }
 
       init();
